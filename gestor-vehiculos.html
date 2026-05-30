@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestor de Vehículos Familiar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root {
+    --bg: #F5F0EB;
+    --surface: #FEFCFA;
+    --border: #E2D9CE;
+    --text: #2C2416;
+    --muted: #9E8E7A;
+    --accent: #C4763A;
+    --accent-light: #F5E4D0;
+
+    --nat:    #A78BFA;
+    --salva:  #6EE7B7;
+    --lara:   #FCA5A5;
+    --ananke: #93C5FD;
+    --tobias: #FCD34D;
+
+    --nat-bg:    #EDE9FE;
+    --salva-bg:  #D1FAE5;
+    --lara-bg:   #FFE4E6;
+    --ananke-bg: #DBEAFE;
+    --tobias-bg: #FEF9C3;
+
+    --auto:      #C4763A;
+    --camioneta: #4B7F9E;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  h1, h2, .serif { font-family: 'Fraunces', serif; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+
+  /* GRID */
+  .vehicle-grid {
+    display: grid;
+    grid-template-columns: 70px repeat(7, 1fr);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface);
+    font-size: 12px;
+  }
+
+  .grid-header {
+    background: var(--bg);
+    border-bottom: 2px solid var(--border);
+    padding: 8px 6px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+  }
+
+  .time-label {
+    background: var(--bg);
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 4px 6px;
+    text-align: right;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 36px;
+  }
+
+  .time-cell {
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    min-height: 36px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .time-cell:last-child { border-right: none; }
+  .time-cell.free { background: #F0FAF4; }
+  .time-cell.free:hover { background: #E0F5EA; }
+  .time-cell.occupied { background: var(--surface); cursor: default; }
+
+  .reservation-block {
+    position: absolute;
+    inset: 1px;
+    border-radius: 6px;
+    padding: 3px 5px;
+    font-size: 10px;
+    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    z-index: 2;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .reservation-block:hover { opacity: 0.85; transform: scale(1.01); }
+  .reservation-block .name { font-size: 10px; font-weight: 700; }
+  .reservation-block .reason { font-size: 9px; opacity: 0.75; }
+
+  /* Member colors */
+  .member-Nat    { background: var(--nat-bg);    border-left-color: var(--nat);    color: #5B21B6; }
+  .member-Salva  { background: var(--salva-bg);  border-left-color: var(--salva);  color: #065F46; }
+  .member-Lara   { background: var(--lara-bg);   border-left-color: var(--lara);   color: #9F1239; }
+  .member-Ananke { background: var(--ananke-bg); border-left-color: var(--ananke); color: #1E40AF; }
+  .member-Tobias { background: var(--tobias-bg); border-left-color: var(--tobias); color: #92400E; }
+
+  .free-badge {
+    position: absolute;
+    inset: 1px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 600;
+    color: #22C55E;
+    letter-spacing: 0.02em;
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 4px,
+      rgba(34,197,94,0.06) 4px,
+      rgba(34,197,94,0.06) 8px
+    );
+    pointer-events: none;
+  }
+
+  /* Form */
+  .form-select, .form-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-select:focus, .form-input:focus { border-color: var(--accent); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 11px 24px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    width: 100%;
+  }
+  .btn-primary:hover { background: #A85F28; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--muted);
+    border: 1.5px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Notification */
+  .notif {
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.5;
+    display: none;
+    animation: slideIn 0.25s ease;
+  }
+  .notif.show { display: block; }
+  .notif.success { background: #D1FAE5; border: 1px solid #6EE7B7; color: #065F46; }
+  .notif.warning { background: #FEF9C3; border: 1px solid #FCD34D; color: #92400E; }
+  .notif.error   { background: #FFE4E6; border: 1px solid #FCA5A5; color: #9F1239; }
+  .notif.info    { background: var(--ananke-bg); border: 1px solid var(--ananke); color: #1E40AF; }
+
+  @keyframes slideIn {
+    from { opacity:0; transform: translateY(-6px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+
+  /* Legend dots */
+  .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  /* Vehicle tabs */
+  .vtab {
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 2px solid transparent;
+  }
+  .vtab.active-auto { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+  .vtab.active-camioneta { background: #DBEAFE; color: var(--camioneta); border-color: var(--camioneta); }
+  .vtab.inactive { background: transparent; color: var(--muted); border-color: var(--border); }
+  .vtab:hover:not(.active-auto):not(.active-camioneta) { border-color: var(--muted); }
+
+  /* Stats */
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+
+  .scrollable-grid { overflow-x: auto; }
+
+  /* Mobile responsive */
+  @media (max-width: 768px) {
+    .vehicle-grid { grid-template-columns: 56px repeat(7, minmax(80px, 1fr)); }
+  }
+
+  /* Tooltip */
+  .tooltip {
+    position: fixed;
+    background: var(--text);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 1000;
+    display: none;
+    max-width: 200px;
+    line-height: 1.4;
+  }
+
+  .week-nav button {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s;
+  }
+  .week-nav button:hover { border-color: var(--accent); color: var(--accent); }
+
+  label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: block; }
+</style>
+</head>
+<body class="p-4 md:p-6">
+
+<div class="max-w-7xl mx-auto space-y-5">
+
+  <!-- HEADER -->
+  <div class="flex items-start justify-between flex-wrap gap-3">
+    <div>
+      <h1 class="text-3xl md:text-4xl" style="font-family:'Fraunces',serif; font-weight:600; color:var(--text)">
+        Gestor de Vehículos
+      </h1>
+      <p class="text-sm mt-1" style="color:var(--muted)">Logística semanal familiar · 2 vehículos · 5 integrantes</p>
+    </div>
+    <div class="flex items-center gap-3 week-nav">
+      <button onclick="changeWeek(-1)">← Sem. anterior</button>
+      <span id="weekLabel" class="text-sm font-semibold" style="color:var(--text); white-space:nowrap"></span>
+      <button onclick="changeWeek(1)">Sem. siguiente →</button>
+    </div>
+  </div>
+
+  <!-- LEGEND + STATS ROW -->
+  <div class="card p-4 flex flex-wrap gap-4 items-center justify-between">
+    <div class="flex flex-wrap gap-3">
+      <span class="text-xs font-semibold uppercase tracking-wider" style="color:var(--muted); margin-right:4px">Integrantes:</span>
+      <span class="flex items-center gap-1.5 text-xs font-medium"><span class="dot" style="background:var(--nat)"></span>Nat</span>
+      <span class="flex items-center gap-1.5 text-xs font-medium"><span class="dot" style="background:var(--salva)"></span>Salva</span>
+      <span class="flex items-center gap-1.5 text-xs font-medium"><span class="dot" style="background:var(--lara)"></span>Lara</span>
+      <span class="flex items-center gap-1.5 text-xs font-medium"><span class="dot" style="background:var(--ananke)"></span>Ananke</span>
+      <span class="flex items-center gap-1.5 text-xs font-medium"><span class="dot" style="background:var(--tobias)"></span>Tobías</span>
+    </div>
+    <div class="flex gap-3">
+      <div class="flex items-center gap-1.5 text-xs">
+        <span style="background:#F0FAF4; border:1px solid #86EFAC; width:14px; height:14px; border-radius:3px; display:inline-block;"></span>
+        <span style="color:#16A34A; font-weight:600">Libre</span>
+      </div>
+      <div class="flex items-center gap-1.5 text-xs font-medium">
+        <span class="dot" style="background:var(--auto); border-radius:2px"></span>El Auto
+      </div>
+      <div class="flex items-center gap-1.5 text-xs font-medium">
+        <span class="dot" style="background:var(--camioneta); border-radius:2px"></span>La Camioneta
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div class="flex flex-col xl:flex-row gap-5">
+
+    <!-- LEFT: Calendar -->
+    <div class="flex-1 min-w-0 space-y-5">
+
+      <!-- Vehicle Tabs -->
+      <div class="flex gap-2">
+        <button class="vtab active-auto" id="tab-auto" onclick="switchVehicle('auto')">🚗 El Auto</button>
+        <button class="vtab inactive" id="tab-camioneta" onclick="switchVehicle('camioneta')">🚙 La Camioneta</button>
+        <button class="vtab inactive text-xs" id="tab-both" onclick="switchVehicle('both')">Ver ambos</button>
+      </div>
+
+      <!-- Grid container -->
+      <div id="gridContainer" class="space-y-4"></div>
+
+    </div>
+
+    <!-- RIGHT: Form + Notifications -->
+    <div class="xl:w-80 space-y-4">
+
+      <!-- New Reservation Form -->
+      <div class="card p-5 space-y-4">
+        <h2 class="text-lg" style="font-family:'Fraunces',serif; font-weight:600">Nueva Reserva</h2>
+
+        <div>
+          <label>Integrante</label>
+          <select class="form-select" id="f-member">
+            <option value="">Seleccionar...</option>
+            <option value="Nat">Nat</option>
+            <option value="Salva">Salva</option>
+            <option value="Lara">Lara</option>
+            <option value="Ananke">Ananke</option>
+            <option value="Tobias">Tobías</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Vehículo</label>
+          <select class="form-select" id="f-vehicle">
+            <option value="">Seleccionar...</option>
+            <option value="auto">🚗 El Auto</option>
+            <option value="camioneta">🚙 La Camioneta</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Día</label>
+          <select class="form-select" id="f-day">
+            <option value="">Seleccionar...</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label>Hora inicio</label>
+            <select class="form-select" id="f-start"></select>
+          </div>
+          <div>
+            <label>Hora fin</label>
+            <select class="form-select" id="f-end"></select>
+          </div>
+        </div>
+
+        <div>
+          <label>Motivo</label>
+          <select class="form-select" id="f-reason">
+            <option value="">Seleccionar...</option>
+            <option value="Trabajo/Estudio">💼 Trabajo / Estudio</option>
+            <option value="Trámites">📋 Trámites</option>
+            <option value="Ocio">🎉 Ocio</option>
+            <option value="SIC">🏊 SIC (Club)</option>
+            <option value="Emergencia">🚨 Emergencia</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Nota (opcional)</label>
+          <input type="text" class="form-input" id="f-note" placeholder="Ej: Llevar a Tobías al SIC...">
+        </div>
+
+        <button class="btn-primary" onclick="submitReservation()">+ Agregar Reserva</button>
+      </div>
+
+      <!-- Notification area -->
+      <div id="notifArea" class="notif"></div>
+
+      <!-- Quick stats -->
+      <div class="card p-4 space-y-3">
+        <h2 class="text-base font-semibold" style="font-family:'Fraunces',serif">Resumen Semana</h2>
+        <div id="statsArea" class="space-y-2"></div>
+      </div>
+
+      <!-- Active reservations list -->
+      <div class="card p-4 space-y-3">
+        <h2 class="text-base font-semibold" style="font-family:'Fraunces',serif">Reservas activas</h2>
+        <div id="reservationList" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+/* =========================================================
+   DATA & CONFIG
+   ========================================================= */
+const MEMBERS = ['Nat','Salva','Lara','Ananke','Tobias'];
+const VEHICLES = ['auto','camioneta'];
+const DAYS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const REASONS = ['Trabajo/Estudio','Trámites','Ocio','SIC','Emergencia'];
+
+// Hours shown in grid (6am - 23pm)
+const HOURS = [];
+for(let h=6; h<=23; h++) HOURS.push(h);
+
+// Priority: higher = wins conflict
+function getPriority(member, vehicle, reason) {
+  // Nat + Auto + Trabajo = máxima prioridad
+  if(member === 'Nat' && vehicle === 'auto' && reason === 'Trabajo/Estudio') return 100;
+  // Trabajo/Estudio = alta prioridad
+  if(reason === 'Trabajo/Estudio') return 50;
+  if(reason === 'Emergencia') return 40;
+  if(reason === 'Trámites') return 20;
+  if(reason === 'SIC') return 15;
+  if(reason === 'Ocio') return 10;
+  return 5;
+}
+
+const MEMBER_COLORS = {
+  Nat:    { dot: '#A78BFA', bg: '#EDE9FE', text: '#5B21B6' },
+  Salva:  { dot: '#6EE7B7', bg: '#D1FAE5', text: '#065F46' },
+  Lara:   { dot: '#FCA5A5', bg: '#FFE4E6', text: '#9F1239' },
+  Ananke: { dot: '#93C5FD', bg: '#DBEAFE', text: '#1E40AF' },
+  Tobias: { dot: '#FCD34D', bg: '#FEF9C3', text: '#92400E' },
+};
+
+const REASON_ICONS = {
+  'Trabajo/Estudio':'💼','Trámites':'📋','Ocio':'🎉','SIC':'🏊','Emergencia':'🚨'
+};
+
+// State
+let reservations = JSON.parse(localStorage.getItem('fam-vehicles') || '[]');
+let weekOffset = 0;
+let activeView = 'auto';
+
+/* =========================================================
+   WEEK UTILS
+   ========================================================= */
+function getWeekStart(offset=0) {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset*7);
+  monday.setHours(0,0,0,0);
+  return monday;
+}
+
+function getDayDates(offset=0) {
+  const mon = getWeekStart(offset);
+  return DAYS.map((_, i) => {
+    const d = new Date(mon);
+    d.setDate(mon.getDate() + i);
+    return d;
+  });
+}
+
+function dateToKey(date) {
+  return date.toISOString().split('T')[0];
+}
+
+function changeWeek(dir) {
+  weekOffset += dir;
+  populateDaySelect();
+  renderAll();
+}
+
+function updateWeekLabel() {
+  const dates = getDayDates(weekOffset);
+  const fmt = d => `${d.getDate()}/${d.getMonth()+1}`;
+  document.getElementById('weekLabel').textContent =
+    `${fmt(dates[0])} – ${fmt(dates[6])} · ${dates[0].getFullYear()}`;
+}
+
+/* =========================================================
+   FORM SETUP
+   ========================================================= */
+function populateDaySelect() {
+  const sel = document.getElementById('f-day');
+  const dates = getDayDates(weekOffset);
+  sel.innerHTML = '<option value="">Seleccionar...</option>';
+  dates.forEach((d, i) => {
+    const fmt = `${d.getDate()}/${d.getMonth()+1}`;
+    sel.innerHTML += `<option value="${dateToKey(d)}">${DAYS[i]} ${fmt}</option>`;
+  });
+}
+
+function populateTimeSelects() {
+  const start = document.getElementById('f-start');
+  const end   = document.getElementById('f-end');
+  let opts = '';
+  for(let h=6; h<=23; h++) {
+    const label = `${String(h).padStart(2,'0')}:00`;
+    opts += `<option value="${h}">${label}</option>`;
+  }
+  start.innerHTML = opts;
+  end.innerHTML   = opts;
+  start.value = 8;
+  end.value   = 10;
+}
+
+/* =========================================================
+   CONFLICT RESOLUTION
+   ========================================================= */
+function getConflicts(vehicle, dayKey, startH, endH, excludeId=null) {
+  return reservations.filter(r =>
+    r.vehicle === vehicle &&
+    r.dayKey  === dayKey  &&
+    r.id !== excludeId    &&
+    r.startH < endH && r.endH > startH
+  );
+}
+
+function submitReservation() {
+  const member  = document.getElementById('f-member').value;
+  const vehicle = document.getElementById('f-vehicle').value;
+  const dayKey  = document.getElementById('f-day').value;
+  const startH  = parseInt(document.getElementById('f-start').value);
+  const endH    = parseInt(document.getElementById('f-end').value);
+  const reason  = document.getElementById('f-reason').value;
+  const note    = document.getElementById('f-note').value.trim();
+
+  if(!member || !vehicle || !dayKey || !reason) {
+    showNotif('Por favor completá todos los campos obligatorios.', 'error'); return;
+  }
+  if(startH >= endH) {
+    showNotif('La hora de fin debe ser mayor a la hora de inicio.', 'error'); return;
+  }
+
+  const newPrio = getPriority(member, vehicle, reason);
+  const conflicts = getConflicts(vehicle, dayKey, startH, endH);
+
+  if(conflicts.length === 0) {
+    addReservation({ member, vehicle, dayKey, startH, endH, reason, note });
+    showNotif(`✅ Reserva agregada para <strong>${member}</strong> — ${REASON_ICONS[reason]} ${reason}`, 'success');
+    return;
+  }
+
+  // Check if new reservation wins all conflicts
+  const lostConflicts = conflicts.filter(c => getPriority(c.member, c.vehicle, c.reason) >= newPrio);
+
+  if(lostConflicts.length > 0) {
+    // New reservation loses
+    const blocker = lostConflicts[0];
+    const icon = REASON_ICONS[blocker.reason];
+    const timeStr = `${blocker.startH}:00–${blocker.endH}:00`;
+    showNotif(
+      `⛔ Reserva bloqueada. <strong>${blocker.member}</strong> ya tiene el ${vehicle === 'auto' ? 'Auto' : 'Camioneta'} de ${timeStr} por motivo: ${icon} ${blocker.reason}, que tiene igual o mayor prioridad.`,
+      'error'
+    );
+    return;
+  }
+
+  // New reservation wins — displace conflicts
+  const otherVehicle = vehicle === 'auto' ? 'camioneta' : 'auto';
+  let suggestion = '';
+  const displaced = [];
+
+  conflicts.forEach(c => {
+    reservations = reservations.filter(r => r.id !== c.id);
+    const otherConflicts = getConflicts(otherVehicle, c.dayKey, c.startH, c.endH);
+    if(otherConflicts.length === 0) {
+      displaced.push(`${c.member} fue movido/a a ${otherVehicle === 'auto' ? 'El Auto' : 'La Camioneta'}`);
+      addReservationSilent({ ...c, vehicle: otherVehicle });
+    } else {
+      displaced.push(`${c.member} (${c.reason}) fue eliminado — ${otherVehicle === 'auto' ? 'El Auto' : 'La Camioneta'} también está ocupada en ese horario`);
+    }
+  });
+
+  addReservation({ member, vehicle, dayKey, startH, endH, reason, note });
+  showNotif(
+    `⚡ Reserva de <strong>${member}</strong> tiene mayor prioridad (${REASON_ICONS[reason]} ${reason}). Desplazó reserva(s) anterior(es).<br><em>${displaced.join('; ')}</em>`,
+    'warning'
+  );
+}
+
+let idCounter = reservations.length ? Math.max(...reservations.map(r=>r.id||0))+1 : 1;
+
+function addReservation(data) {
+  const r = { id: idCounter++, ...data };
+  reservations.push(r);
+  save();
+  renderAll();
+}
+
+function addReservationSilent(data) {
+  const r = { id: idCounter++, ...data };
+  reservations.push(r);
+}
+
+function deleteReservation(id) {
+  reservations = reservations.filter(r => r.id !== id);
+  save();
+  renderAll();
+  showNotif('Reserva eliminada.', 'info');
+}
+
+function save() {
+  localStorage.setItem('fam-vehicles', JSON.stringify(reservations));
+}
+
+/* =========================================================
+   RENDER GRID
+   ========================================================= */
+function switchVehicle(v) {
+  activeView = v;
+  ['auto','camioneta','both'].forEach(x => {
+    const tab = document.getElementById(`tab-${x}`);
+    if(!tab) return;
+    tab.className = 'vtab';
+    if(x === v) {
+      if(v === 'auto') tab.classList.add('active-auto');
+      else if(v === 'camioneta') tab.classList.add('active-camioneta');
+      else tab.classList.add('active-auto');
+    } else {
+      tab.classList.add('inactive');
+    }
+  });
+  renderGrids();
+}
+
+function renderAll() {
+  updateWeekLabel();
+  renderGrids();
+  renderStats();
+  renderReservationList();
+}
+
+function renderGrids() {
+  const container = document.getElementById('gridContainer');
+  const vehiclesToShow = activeView === 'both' ? ['auto','camioneta'] : [activeView];
+  container.innerHTML = '';
+  vehiclesToShow.forEach(v => {
+    const el = buildGrid(v);
+    container.appendChild(el);
+  });
+}
+
+function buildGrid(vehicle) {
+  const dates = getDayDates(weekOffset);
+  const vLabel = vehicle === 'auto' ? '🚗 El Auto' : '🚙 La Camioneta';
+  const vColor = vehicle === 'auto' ? 'var(--auto)' : 'var(--camioneta)';
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'space-y-2';
+
+  // Title
+  const title = document.createElement('div');
+  title.className = 'flex items-center gap-2';
+  title.innerHTML = `<span class="font-bold text-sm" style="color:${vColor}">${vLabel}</span>`;
+  // Free slots badge
+  const freeSlots = countFreeSlots(vehicle, dates);
+  title.innerHTML += `<span class="text-xs px-2 py-0.5 rounded-full font-medium" style="background:#D1FAE5; color:#065F46">${freeSlots} bloques libres esta semana</span>`;
+  wrapper.appendChild(title);
+
+  const scrollDiv = document.createElement('div');
+  scrollDiv.className = 'scrollable-grid';
+
+  const grid = document.createElement('div');
+  grid.className = 'vehicle-grid';
+
+  // Header row
+  const cornerHeader = document.createElement('div');
+  cornerHeader.className = 'grid-header';
+  cornerHeader.textContent = 'Hora';
+  grid.appendChild(cornerHeader);
+
+  dates.forEach((d, i) => {
+    const h = document.createElement('div');
+    h.className = 'grid-header';
+    const today = new Date(); today.setHours(0,0,0,0);
+    const isToday = d.getTime() === today.getTime();
+    h.innerHTML = `<span class="${isToday ? 'text-orange-500' : ''}">${DAYS[i].slice(0,3)}<br><span class="font-normal" style="font-size:10px">${d.getDate()}/${d.getMonth()+1}</span></span>`;
+    grid.appendChild(h);
+  });
+
+  // Hour rows
+  HOURS.forEach(hour => {
+    const timeLabel = document.createElement('div');
+    timeLabel.className = 'time-label';
+    timeLabel.textContent = `${String(hour).padStart(2,'0')}:00`;
+    grid.appendChild(timeLabel);
+
+    dates.forEach((d, di) => {
+      const dayKey = dateToKey(d);
+      const cell = document.createElement('div');
+
+      // Check for reservations in this slot
+      const slotRes = reservations.filter(r =>
+        r.vehicle === vehicle &&
+        r.dayKey  === dayKey  &&
+        r.startH <= hour && r.endH > hour
+      );
+
+      if(slotRes.length === 0) {
+        cell.className = 'time-cell free';
+        const badge = document.createElement('div');
+        badge.className = 'free-badge';
+        cell.appendChild(badge);
+        // Click to pre-fill form
+        cell.onclick = () => prefillForm(vehicle, dayKey, hour);
+      } else {
+        cell.className = 'time-cell occupied';
+        const r = slotRes[0];
+        // Only show block at start hour
+        if(r.startH === hour) {
+          const block = document.createElement('div');
+          const span = r.endH - r.startH;
+          block.className = `reservation-block member-${r.member}`;
+          block.style.height = `calc(${span * 100}% + ${(span-1)*1}px)`;
+          block.style.zIndex = '3';
+          block.innerHTML = `
+            <span class="name">${r.member}</span>
+            <span class="reason">${REASON_ICONS[r.reason]||''} ${r.reason}</span>
+            ${r.note ? `<span class="reason" style="opacity:0.55">${r.note}</span>` : ''}
+          `;
+          block.onclick = (e) => { e.stopPropagation(); showBlockTooltip(r, e); };
+          cell.appendChild(block);
+        }
+      }
+
+      grid.appendChild(cell);
+    });
+  });
+
+  scrollDiv.appendChild(grid);
+  wrapper.appendChild(scrollDiv);
+  return wrapper;
+}
+
+function countFreeSlots(vehicle, dates) {
+  let free = 0;
+  dates.forEach(d => {
+    const dayKey = dateToKey(d);
+    HOURS.forEach(h => {
+      const occupied = reservations.some(r =>
+        r.vehicle === vehicle && r.dayKey === dayKey &&
+        r.startH <= h && r.endH > h
+      );
+      if(!occupied) free++;
+    });
+  });
+  return free;
+}
+
+function prefillForm(vehicle, dayKey, hour) {
+  document.getElementById('f-vehicle').value = vehicle;
+  document.getElementById('f-day').value = dayKey;
+  document.getElementById('f-start').value = hour;
+  document.getElementById('f-end').value = Math.min(hour+2, 23);
+  // Scroll to form
+  document.getElementById('f-member').focus();
+  showNotif(`📅 Horario pre-seleccionado: ${vehicle === 'auto' ? 'Auto' : 'Camioneta'} — ${hour}:00 hs`, 'info');
+}
+
+/* =========================================================
+   TOOLTIP
+   ========================================================= */
+function showBlockTooltip(r, evt) {
+  const tt = document.getElementById('tooltip');
+  tt.innerHTML = `
+    <strong>${r.member}</strong><br>
+    ${REASON_ICONS[r.reason]} ${r.reason}<br>
+    ${r.startH}:00 – ${r.endH}:00<br>
+    ${r.note ? `📝 ${r.note}<br>` : ''}
+    <em style="opacity:0.7;font-size:10px">${r.vehicle === 'auto' ? '🚗 Auto' : '🚙 Camioneta'}</em>
+    <br><span style="color:#FCA5A5;cursor:pointer;font-size:10px" onclick="deleteReservation(${r.id})">✕ Eliminar</span>
+  `;
+  tt.style.display = 'block';
+  tt.style.left = (evt.clientX + 12) + 'px';
+  tt.style.top  = (evt.clientY - 10) + 'px';
+  setTimeout(() => { tt.style.display = 'none'; }, 4000);
+}
+
+document.addEventListener('click', () => {
+  document.getElementById('tooltip').style.display = 'none';
+});
+
+/* =========================================================
+   STATS
+   ========================================================= */
+function renderStats() {
+  const area = document.getElementById('statsArea');
+  const dates = getDayDates(weekOffset);
+  const keys  = dates.map(dateToKey);
+  const weekRes = reservations.filter(r => keys.includes(r.dayKey));
+
+  const stats = {};
+  MEMBERS.forEach(m => { stats[m] = 0; });
+  weekRes.forEach(r => { stats[r.member] = (stats[r.member]||0) + (r.endH - r.startH); });
+
+  area.innerHTML = Object.entries(stats)
+    .sort((a,b) => b[1]-a[1])
+    .map(([m,h]) => `
+      <div class="flex items-center gap-2">
+        <span class="dot" style="background:${MEMBER_COLORS[m]?.dot}"></span>
+        <span class="text-xs font-medium flex-1">${m}</span>
+        <span class="text-xs font-bold" style="color:${MEMBER_COLORS[m]?.text}">${h}h</span>
+      </div>
+    `).join('');
+
+  if(weekRes.length === 0) {
+    area.innerHTML = '<p class="text-xs" style="color:var(--muted)">Sin reservas esta semana.</p>';
+  }
+}
+
+/* =========================================================
+   RESERVATION LIST
+   ========================================================= */
+function renderReservationList() {
+  const area = document.getElementById('reservationList');
+  const dates = getDayDates(weekOffset);
+  const keys  = dates.map(dateToKey);
+  const weekRes = reservations
+    .filter(r => keys.includes(r.dayKey))
+    .sort((a,b) => {
+      if(a.dayKey !== b.dayKey) return a.dayKey.localeCompare(b.dayKey);
+      return a.startH - b.startH;
+    });
+
+  if(weekRes.length === 0) {
+    area.innerHTML = '<p class="text-xs" style="color:var(--muted)">Sin reservas esta semana.</p>';
+    return;
+  }
+
+  area.innerHTML = weekRes.map(r => {
+    const mc = MEMBER_COLORS[r.member] || {};
+    const dayIdx = keys.indexOf(r.dayKey);
+    const dayLabel = dayIdx >= 0 ? DAYS[dayIdx].slice(0,3) : r.dayKey;
+    return `
+      <div class="flex items-start gap-2 p-2 rounded-lg" style="background:${mc.bg||'#f9f9f9'}">
+        <span class="dot mt-1" style="background:${mc.dot}; flex-shrink:0"></span>
+        <div class="flex-1 min-w-0">
+          <div class="text-xs font-bold" style="color:${mc.text}">${r.member}</div>
+          <div class="text-xs" style="color:var(--muted)">${dayLabel} · ${r.startH}:00–${r.endH}:00 · ${r.vehicle === 'auto' ? '🚗' : '🚙'}</div>
+          <div class="text-xs">${REASON_ICONS[r.reason]||''} ${r.reason}${r.note ? ` — ${r.note}` : ''}</div>
+        </div>
+        <button onclick="deleteReservation(${r.id})" class="text-xs mt-0.5 flex-shrink-0" style="color:#FCA5A5; background:none; border:none; cursor:pointer; font-size:14px; line-height:1">×</button>
+      </div>
+    `;
+  }).join('');
+}
+
+/* =========================================================
+   NOTIFICATIONS
+   ========================================================= */
+function showNotif(msg, type) {
+  const el = document.getElementById('notifArea');
+  el.innerHTML = msg;
+  el.className = `notif ${type} show`;
+  clearTimeout(el._timeout);
+  el._timeout = setTimeout(() => { el.className = 'notif'; }, 6000);
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+function init() {
+  populateDaySelect();
+  populateTimeSelects();
+  renderAll();
+}
+
+init();
+</script>
+</body>
+</html>
